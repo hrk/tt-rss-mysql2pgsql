@@ -1,6 +1,8 @@
 package it.sineo.ttrssMySQL2PGSQL;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -23,7 +25,12 @@ public class Sync {
 
 		final Properties config = new Properties();
 		try {
-			config.load(Sync.class.getResourceAsStream("config"));
+			InputStream is = Sync.class.getResourceAsStream("config");
+			if (is == null) {
+				is = new FileInputStream("config.properties");
+			}
+			config.load(is);
+			is.close();
 		} catch (IOException ioex) {
 			System.err.println("Unable to read config.properties due to exception: " + ioex.getMessage());
 		}
