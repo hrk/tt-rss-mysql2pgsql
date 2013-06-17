@@ -1,5 +1,6 @@
 package it.sineo.ttrssMySQL2PGSQL;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -9,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.Properties;
 
 public class Sync {
 
@@ -19,19 +21,38 @@ public class Sync {
 		Class.forName("org.postgresql.Driver");
 		Class.forName("com.mysql.jdbc.Driver");
 
-		final String srcUrl = System.getProperty("src.url", "jdbc:mysql://localhost/ttrssdb");
-		final String dstUrl = System.getProperty("dst.url", "jdbc:postgresql:ttrssdb");
+		final Properties config = new Properties();
+		try {
+			config.load(Sync.class.getResourceAsStream("config"));
+		} catch (IOException ioex) {
+			System.err.println("Unable to read config.properties due to exception: " + ioex.getMessage());
+		}
 
-		final String user = System.getProperty("username");
-		final String password = System.getProperty("password");
+		String srcUrl = config.getProperty("mysql.url", null);
+		String dstUrl = config.getProperty("pgsql.url", null);
 
-		if (srcUrl == null || dstUrl == null || user == null || password == null) {
-			System.err.println("Missing either src.url, dst.url, username or password. Try again");
+		String srcUser = config.getProperty("mysql.username", null);
+		String srcPassword = config.getProperty("mysql.password", null);
+
+		String dstUser = config.getProperty("pgsql.username", null);
+		String dstPassword = config.getProperty("pgsql.password", null);
+
+		final boolean useBatch = Boolean.valueOf(config.getProperty("usebatch", "true"));
+
+		if (dstUser == null) {
+			dstUser = srcUser;
+		}
+		if (dstPassword == null) {
+			dstPassword = srcPassword;
+		}
+
+		if (srcUrl == null || dstUrl == null || srcUser == null || srcPassword == null) {
+			System.err.println("Check your config.properties, something is missing!");
 			System.exit(-1);
 		}
 
-		Connection srcCon = DriverManager.getConnection(srcUrl, user, password);
-		Connection dstCon = DriverManager.getConnection(dstUrl, user, password);
+		Connection srcCon = DriverManager.getConnection(srcUrl, srcUser, srcPassword);
+		Connection dstCon = DriverManager.getConnection(dstUrl, dstUser, dstPassword);
 
 		String[] tableList = {
 				"ttrss_users:id",
@@ -63,6 +84,7 @@ public class Sync {
 		Statement srcSt = srcCon.createStatement();
 		PreparedStatement dstSequence = dstCon.prepareStatement("SELECT setval(?, ?)");
 		for (String tableInfo : tableList) {
+			int count = 0;
 
 			String[] tableData = tableInfo.split(":");
 			String tableName = tableData[0];
@@ -72,6 +94,10 @@ public class Sync {
 			long t0 = System.currentTimeMillis();
 			String query = "SELECT * FROM " + tableName;
 			if (idColumn != null) {
+				/*
+				 * We assume the serial never overflows and starts again filling the
+				 * holes...
+				 */
 				query += " ORDER BY " + idColumn + " ASC";
 			}
 			ResultSet rs = srcSt.executeQuery(query);
@@ -153,17 +179,28 @@ public class Sync {
 					}
 				} // end-for: colonne.
 				try {
-					pst.executeUpdate();
-					// pst.addBatch();
-					// count++;
-					// if (count % 500 == 0) {
-					// pst.executeBatch();
-					// }
+					if (useBatch) {
+						pst.addBatch();
+						count++;
+						if (count % 500 == 0) {
+							pst.executeBatch();
+						}
+					} else {
+						/* Single row action */
+						pst.executeUpdate();
+					}
 				} catch (SQLException sqlex) {
 					System.out.println("ERROR: " + sqlex.getMessage());
 				}
 			}
-			// pst.executeBatch();
+			if (useBatch) {
+				/* Final execution */
+				try {
+					pst.executeBatch();
+				} catch (SQLException sqlex) {
+					System.out.println("ERROR: " + sqlex.getMessage());
+				}
+			}
 
 			long t1 = System.currentTimeMillis();
 			System.out.println("[" + tableName + "] " + (t1 - t0) + " ms.");
