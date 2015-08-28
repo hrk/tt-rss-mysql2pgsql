@@ -198,6 +198,11 @@ public class Sync {
 					}
 				} catch (SQLException sqlex) {
 					System.out.println("ERROR: " + sqlex.getMessage());
+					SQLException e = sqlex;
+					while (e.getNextException() != null) {
+						System.out.println("CAUSE: " + e.getNextException().getMessage());
+						e = e.getNextException();
+					}
 				}
 			}
 			if (useBatch) {
@@ -206,6 +211,11 @@ public class Sync {
 					pst.executeBatch();
 				} catch (SQLException sqlex) {
 					System.out.println("ERROR: " + sqlex.getMessage());
+					SQLException e = sqlex;
+					while (e.getNextException() != null) {
+						System.out.println("CAUSE: " + e.getNextException().getMessage());
+						e = e.getNextException();
+					}
 				}
 			}
 
