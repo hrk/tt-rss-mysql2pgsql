@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Class-Path: . tt-rss-mysql2pgsql_lib/mysql-connector-java-5.1.36-bin.j
+ ar tt-rss-mysql2pgsql_lib/postgresql-9.4-1202.jdbc41.jar
+Main-Class: it.sineo.ttrssMySQL2PGSQL.Sync
+
