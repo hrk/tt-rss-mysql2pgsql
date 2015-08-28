@@ -1,0 +1,15 @@
+<project name="tt-rss-mysql2pgsql" default="buildJar">
+	<property name="src.dir" value="${basedir}/src" />
+	<property name="bin.dir" value="${basedir}/bin" />
+	<property name="dist.dir" value="${basedir}/dist" />
+
+	<target name="compile">
+		<javac srcdir="${src.dir}" destdir="${bin.dir}" target="1.7" />
+	</target>
+	<target name="buildJar" depends="compile">
+		<mkdir dir="${dist.dir}" />
+		<jar basedir="${bin.dir}" jarfile="${dist.dir}/${ant.project.name}.jar"
+			manifest="${src.dir}/META-INF/MANIFEST.MF">
+		</jar>
+	</target>
+</project>
