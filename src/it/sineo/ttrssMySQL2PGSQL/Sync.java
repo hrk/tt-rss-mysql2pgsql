@@ -125,6 +125,12 @@ public class Sync {
 			System.out.println(insert);
 			PreparedStatement pst = dstCon.prepareStatement(insert);
 			while (rs.next()) {
+				/*
+				 * The default script creates two rows: the admin user and the feed for
+				 * the forum. In order to avoid exceptions on those two rows, we'll skip
+				 * them.
+				 */
+				boolean isOneOfTheTwoAlreadyExistingRows = false;
 				for (int i = start; i <= rsmd.getColumnCount(); i++) {
 					int j = /* tableData.length > 1 ? i - 1 : */i;
 					boolean wasNull = false;
@@ -152,8 +158,15 @@ public class Sync {
 							}
 							break;
 						}
-						case Types.LONGVARCHAR: {
+						case Types.LONGVARCHAR:
+						case Types.VARCHAR: {
 							String _str = rs.getString(i);
+							if (("ttrss_users".equals(tableName) && "login".equals(rsmd.getColumnName(i))
+									&& "admin".equals(_str))
+									|| ("ttrss_feeds".equals(tableName) && "feed_url".equals(rsmd.getColumnName(i))
+											&& "http://tt-rss.org/forum/rss.php".equals(_str))) {
+								isOneOfTheTwoAlreadyExistingRows = true;
+							}
 							wasNull = rs.wasNull();
 							if (!wasNull) {
 								pst.setString(j, _str);
@@ -168,14 +181,6 @@ public class Sync {
 							}
 							break;
 						}
-						case Types.VARCHAR: {
-							String _str = rs.getString(i);
-							wasNull = rs.wasNull();
-							if (!wasNull) {
-								pst.setString(j, _str);
-							}
-							break;
-						}
 						default: {
 							System.out.println("Unhandled type: " + rsmd.getColumnTypeName(i) + " " + rsmd.getColumnType(i));
 							break;
@@ -186,6 +191,14 @@ public class Sync {
 					}
 				} // end-for: colonne.
 				try {
+					if (isOneOfTheTwoAlreadyExistingRows) {
+						/*
+						 * It's either the admin account in ttrss_users or the release feed
+						 * in ttrss_feeds; continue to the next row
+						 */
+						isOneOfTheTwoAlreadyExistingRows = false;
+						continue;
+					}
 					if (useBatch) {
 						pst.addBatch();
 						count++;
