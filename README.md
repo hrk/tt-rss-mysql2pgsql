@@ -2,10 +2,19 @@
 This is a simple tool to migrate an existing [TT-RSS] installation from a MySQL database to a PostgreSQL one.
 
 ## Usage
-0. Make sure you already created a PostgreSQL database and launched the ttrss_schema_pgsql.sql script. Obviously make sure that your MySQL databas is up to date as per TT-RSS schema!
+
+### Prerequisites
+
+1. MySQL (original) up and running. Make sure your database schema is up to date to the running TT-RSS instance.
+2. PostgreSQL up and running. Create the database, the user, give the required grants (example: `createdb ttrssdb -O ttrssuser -D ttrss` as postgres user, but I recommend looking at the PostgreSQL docs for more information).
+3. Execute the ttrss_schema_pgsql.sql script on the new database, using the file coming from your running TT-RSS instance (so it's up-to-date to your MySQL instance)
+4. Do not configure TT-RSS to connect to PostrgreSQL yet. And don't perform any login as any user.
+
+### Launching the tool
+
 1. Edit the config.properties file with your own database configuration. It's likely you'll only need to change the database name, username and password.
 2. Stop the TT-RSS update daemon if it is running.
-3. "java -jar tt-rss-mysql2pgsql.jar"
+3. "java -jar tt-rss-mysql2pgsql.jar". You may be required to add -XmxNNNNm if you have a big database and set usebatch=true in config.properties. The exact amount of RAM to allocate depends on your database size.
 4. Edit the config.php in your TT-RSS installation in order to use pgsql driver in place of mysql.
 
 ## Migration notes
